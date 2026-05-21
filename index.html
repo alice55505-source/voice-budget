@@ -359,8 +359,26 @@ function startVoice() {
   recog.onend = () => {
     isRec=false; const b=document.getElementById('vbtn');
     if(b){b.classList.remove('rec');b.textContent='🎙';}
-    if (pendAmt > 0 || pendNote) showForm(pendNote, pendAmt);
-    else { const r=document.getElementById('vres'); if(r)r.textContent=''; }
+    if (pendAmt > 0) {
+      const note = pendNote || '記帳';
+      addRec(activeTab, pendAmt, note);
+      render();
+      const tab = D.tabs.find(t=>t.id===activeTab);
+      const s = ccSpend(); const p = s/D.budget*100;
+      if (tab?.cc) {
+        if      (p>=100) showToast(`⚠️ 超預算！本月已花 $${s.toLocaleString()}`);
+        else if (p>=80)  showToast(`提醒：已用預算 ${Math.round(p)}%，剩 $${(D.budget-s).toLocaleString()}`);
+        else             showToast(`記帳 $${pendAmt}，本月剩 $${(D.budget-s).toLocaleString()}`);
+      } else {
+        showToast(`已記帳 $${pendAmt}`);
+      }
+      pendAmt=0; pendNote='';
+      const r=document.getElementById('vres'); if(r)r.textContent='';
+    } else if (pendNote) {
+      showForm(pendNote, 0);
+    } else {
+      const r=document.getElementById('vres'); if(r)r.textContent='';
+    }
   };
   recog.onerror = e => {
     isRec=false; const b=document.getElementById('vbtn');
