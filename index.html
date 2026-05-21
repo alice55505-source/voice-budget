@@ -254,12 +254,46 @@ function renderTabs() {
 }
 
 function render() {
-  const tab   = D.tabs.find(t => t.id === activeTab);
-  const spend = ccSpend();
-  const budget= D.budget;
-  const pct   = Math.min(100, spend / budget * 100);
-  const rem   = budget - spend;
-  const cls   = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : 'ok';
+  const tab = D.tabs.find(t => t.id === activeTab);
+  const m   = curMonth();
+
+  let budgetCardHTML;
+  if (tab?.cc) {
+    const spend  = ccSpend();
+    const budget = D.budget;
+    const pct    = Math.min(100, spend / budget * 100);
+    const rem    = budget - spend;
+    const cls    = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : 'ok';
+    budgetCardHTML = `
+    <div class="bcard">
+      <div class="bcard-row">
+        <div>
+          <div class="blabel">信用卡本月消費</div>
+          <div class="bamt ${cls}">$${spend.toLocaleString()}</div>
+        </div>
+        <div class="bright">
+          <div class="bbudget">預算 $${budget.toLocaleString()}</div>
+          <div class="bremain">${cls==='over' ? '⚠️ 已超支 $'+(spend-budget).toLocaleString() : '剩 $'+rem.toLocaleString()}</div>
+        </div>
+      </div>
+      <div class="bbar"><div class="bfill ${cls}" style="width:${pct}%"></div></div>
+      <div class="bfoot"><span>${cls==='over'?'🔴 超過預算':'已使用 '+Math.round(pct)+'%'}</span><span>${new Date().getMonth()+1}月</span></div>
+    </div>`;
+  } else {
+    const tabSpend = D.records.filter(r => r.tabId === activeTab && r.date.startsWith(m)).reduce((s,r) => s+r.amount, 0);
+    budgetCardHTML = `
+    <div class="bcard">
+      <div class="bcard-row">
+        <div>
+          <div class="blabel">${esc(tab?.name || '')}本月支出</div>
+          <div class="bamt ok">$${tabSpend.toLocaleString()}</div>
+        </div>
+        <div class="bright">
+          <div class="bbudget">${new Date().getMonth()+1}月</div>
+        </div>
+      </div>
+    </div>`;
+  }
 
   const recs  = D.records.filter(r => r.tabId === activeTab);
   const groups= {};
@@ -280,20 +314,7 @@ function render() {
   }).join('');
 
   document.getElementById('app').innerHTML = `
-    <div class="bcard">
-      <div class="bcard-row">
-        <div>
-          <div class="blabel">信用卡本月消費</div>
-          <div class="bamt ${cls}">$${spend.toLocaleString()}</div>
-        </div>
-        <div class="bright">
-          <div class="bbudget">預算 $${budget.toLocaleString()}</div>
-          <div class="bremain">${cls==='over' ? '⚠️ 已超支 $'+(spend-budget).toLocaleString() : '剩 $'+rem.toLocaleString()}</div>
-        </div>
-      </div>
-      <div class="bbar"><div class="bfill ${cls}" style="width:${pct}%"></div></div>
-      <div class="bfoot"><span>${cls==='over'?'🔴 超過預算':'已使用 '+Math.round(pct)+'%'}</span><span>${new Date().getMonth()+1}月</span></div>
-    </div>
+    ${budgetCardHTML}
 
     <div class="vsec">
       <button class="vbtn" id="vbtn" onclick="toggleVoice()">🎙</button>
