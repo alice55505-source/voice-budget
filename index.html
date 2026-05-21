@@ -94,6 +94,14 @@
     /* Budget settings btn */
     .hdr-row{display:flex;justify-content:space-between;align-items:center}
     .hdr-btn{background:rgba(255,255,255,.2);border:none;color:#fff;font-size:13px;padding:5px 10px;border-radius:99px;cursor:pointer}
+    /* PWA install banner */
+    .pwa-banner{margin:12px 16px 0;background:linear-gradient(135deg,#7c3aed,#6d28d9);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(124,58,237,.3)}
+    .pwa-banner-ico{font-size:28px;flex-shrink:0}
+    .pwa-banner-txt{flex:1;color:#fff}
+    .pwa-banner-title{font-size:14px;font-weight:700}
+    .pwa-banner-sub{font-size:12px;opacity:.8;margin-top:2px}
+    .pwa-banner-btn{background:#fff;color:var(--p);border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0}
+    .pwa-banner-close{background:none;border:none;color:rgba(255,255,255,.6);font-size:18px;cursor:pointer;padding:4px;flex-shrink:0;line-height:1}
   </style>
 </head>
 <body>
@@ -101,7 +109,7 @@
 <div class="hdr">
   <div class="hdr-row">
     <h1>🎙 語音記帳</h1>
-    <button class="hdr-btn" onclick="showBudgetModal()">⚙ 預算</button>
+    <button class="hdr-btn" onclick="showContextBudgetModal()">⚙ 預算</button>
   </div>
   <div class="hdr-sub" id="curMonth">載入中...</div>
 </div>
@@ -110,6 +118,7 @@
   <div class="tab-add" onclick="showAddTabModal()">＋</div>
 </div>
 
+<div id="pwa-banner"></div>
 <div id="app"></div>
 
 <!-- Add Tab Modal -->
@@ -125,6 +134,20 @@
     <div class="mbtns">
       <button class="btn btns" onclick="closeAddTabModal()">取消</button>
       <button class="btn btnp" onclick="confirmAddTab()">新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tab Budget Modal -->
+<div class="overlay" id="tabBudgetModal">
+  <div class="modal">
+    <div class="mtitle" id="tabBudgetTitle">月預算設定</div>
+    <div class="mlabel">每月預算上限（元）</div>
+    <input type="number" class="qinput" id="tabBudgetInput" style="width:100%;margin-bottom:8px" inputmode="numeric">
+    <div style="font-size:12px;color:var(--mu)">超過 80% 會提醒，留空或填 0 則不設預算</div>
+    <div class="mbtns">
+      <button class="btn btns" onclick="closeTabBudgetModal()">取消</button>
+      <button class="btn btnp" onclick="confirmTabBudget()">儲存</button>
     </div>
   </div>
 </div>
@@ -281,18 +304,40 @@ function render() {
     </div>`;
   } else {
     const tabSpend = D.records.filter(r => r.tabId === activeTab && r.date.startsWith(m)).reduce((s,r) => s+r.amount, 0);
-    budgetCardHTML = `
-    <div class="bcard">
-      <div class="bcard-row">
-        <div>
-          <div class="blabel">${esc(tab?.name || '')}本月支出</div>
-          <div class="bamt ok">$${tabSpend.toLocaleString()}</div>
+    if (tab?.budget > 0) {
+      const budget = tab.budget;
+      const pct    = Math.min(100, tabSpend / budget * 100);
+      const rem    = budget - tabSpend;
+      const cls    = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : 'ok';
+      budgetCardHTML = `
+      <div class="bcard">
+        <div class="bcard-row">
+          <div>
+            <div class="blabel">${esc(tab?.name || '')}本月支出</div>
+            <div class="bamt ${cls}">$${tabSpend.toLocaleString()}</div>
+          </div>
+          <div class="bright">
+            <div class="bbudget">預算 $${budget.toLocaleString()}</div>
+            <div class="bremain">${cls==='over' ? '⚠️ 已超支 $'+(tabSpend-budget).toLocaleString() : '剩 $'+rem.toLocaleString()}</div>
+          </div>
         </div>
-        <div class="bright">
-          <div class="bbudget">${new Date().getMonth()+1}月</div>
+        <div class="bbar"><div class="bfill ${cls}" style="width:${pct}%"></div></div>
+        <div class="bfoot"><span>${cls==='over'?'🔴 超過預算':'已使用 '+Math.round(pct)+'%'}</span><span>${new Date().getMonth()+1}月</span></div>
+      </div>`;
+    } else {
+      budgetCardHTML = `
+      <div class="bcard">
+        <div class="bcard-row">
+          <div>
+            <div class="blabel">${esc(tab?.name || '')}本月支出</div>
+            <div class="bamt ok">$${tabSpend.toLocaleString()}</div>
+          </div>
+          <div class="bright">
+            <div class="bbudget">${new Date().getMonth()+1}月</div>
+          </div>
         </div>
-      </div>
-    </div>`;
+      </div>`;
+    }
   }
 
   const recs  = D.records.filter(r => r.tabId === activeTab);
@@ -366,9 +411,16 @@ function startVoice() {
       const tab = D.tabs.find(t=>t.id===activeTab);
       const s = ccSpend(); const p = s/D.budget*100;
       if (tab?.cc) {
+        const s = ccSpend(); const p = s/D.budget*100;
         if      (p>=100) showToast(`⚠️ 超預算！本月已花 $${s.toLocaleString()}`);
         else if (p>=80)  showToast(`提醒：已用預算 ${Math.round(p)}%，剩 $${(D.budget-s).toLocaleString()}`);
         else             showToast(`記帳 $${pendAmt}，本月剩 $${(D.budget-s).toLocaleString()}`);
+      } else if (tab?.budget > 0) {
+        const ts = D.records.filter(r=>r.tabId===activeTab&&r.date.startsWith(curMonth())).reduce((a,r)=>a+r.amount,0);
+        const p = ts/tab.budget*100;
+        if      (p>=100) showToast(`⚠️ 超預算！本月已花 $${ts.toLocaleString()}`);
+        else if (p>=80)  showToast(`提醒：已用預算 ${Math.round(p)}%，剩 $${(tab.budget-ts).toLocaleString()}`);
+        else             showToast(`記帳 $${pendAmt}，本月剩 $${(tab.budget-ts).toLocaleString()}`);
       } else {
         showToast(`已記帳 $${pendAmt}`);
       }
@@ -410,12 +462,18 @@ function confirmRec() {
   if (amount <= 0) { showToast('請輸入金額'); return; }
   addRec(activeTab, amount, note);
   cancelForm(); render();
-  const s = ccSpend(); const p = s/D.budget*100;
   const tab = D.tabs.find(t=>t.id===activeTab);
   if (tab?.cc) {
+    const s = ccSpend(); const p = s/D.budget*100;
     if      (p>=100) showToast(`⚠️ 超預算！本月已花 $${s.toLocaleString()}`);
     else if (p>=80)  showToast(`提醒：已用預算 ${Math.round(p)}%，剩 $${(D.budget-s).toLocaleString()}`);
     else             showToast(`記帳 $${amount}，本月剩 $${(D.budget-s).toLocaleString()}`);
+  } else if (tab?.budget > 0) {
+    const ts = D.records.filter(r=>r.tabId===activeTab&&r.date.startsWith(curMonth())).reduce((a,r)=>a+r.amount,0);
+    const p = ts/tab.budget*100;
+    if      (p>=100) showToast(`⚠️ 超預算！本月已花 $${ts.toLocaleString()}`);
+    else if (p>=80)  showToast(`提醒：已用預算 ${Math.round(p)}%，剩 $${(tab.budget-ts).toLocaleString()}`);
+    else             showToast(`記帳 $${amount}，本月剩 $${(tab.budget-ts).toLocaleString()}`);
   } else {
     showToast(`已記帳 $${amount}`);
   }
@@ -478,6 +536,28 @@ function deleteTab() {
 }
 
 // ── Budget modal ──────────────────────────────────────────────
+function showContextBudgetModal() {
+  const tab = D.tabs.find(t => t.id === activeTab);
+  if (tab?.cc) showBudgetModal();
+  else showTabBudgetModal();
+}
+
+function showTabBudgetModal() {
+  const tab = D.tabs.find(t => t.id === activeTab);
+  document.getElementById('tabBudgetTitle').textContent = `${tab?.name || ''}月預算設定`;
+  document.getElementById('tabBudgetInput').value = tab?.budget || '';
+  document.getElementById('tabBudgetModal').classList.add('on');
+  setTimeout(() => document.getElementById('tabBudgetInput').focus(), 150);
+}
+function closeTabBudgetModal() { document.getElementById('tabBudgetModal').classList.remove('on'); }
+function confirmTabBudget() {
+  const tab = D.tabs.find(t => t.id === activeTab); if (!tab) return;
+  const v = parseFloat(document.getElementById('tabBudgetInput').value) || 0;
+  tab.budget = v;
+  save(); closeTabBudgetModal(); render();
+  showToast(v > 0 ? `${tab.name}預算已設為 $${v.toLocaleString()}` : `${tab.name}已清除預算`);
+}
+
 function showBudgetModal() {
   document.getElementById('budgetInput').value = D.budget;
   document.getElementById('budgetModal').classList.add('on');
@@ -498,9 +578,75 @@ function showToast(msg) {
 }
 
 // ── Modal backdrop ────────────────────────────────────────────
-['addTabModal','budgetModal'].forEach(id => {
+['addTabModal','budgetModal','tabBudgetModal'].forEach(id => {
   document.getElementById(id).addEventListener('click', function(e){ if(e.target===this) this.classList.remove('on'); });
 });
+
+// ── PWA Install ───────────────────────────────────────────────
+let deferredPrompt = null;
+
+function isInStandaloneMode() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+}
+
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function showPWABanner() {
+  if (isInStandaloneMode()) return;
+  if (localStorage.getItem('pwa_dismissed')) return;
+  const el = document.getElementById('pwa-banner');
+  if (!el) return;
+
+  if (deferredPrompt) {
+    // Android Chrome: can trigger native install
+    el.innerHTML = `
+      <div class="pwa-banner">
+        <div class="pwa-banner-ico">📲</div>
+        <div class="pwa-banner-txt">
+          <div class="pwa-banner-title">安裝到主畫面</div>
+          <div class="pwa-banner-sub">像 App 一樣快速開啟，離線也能用</div>
+        </div>
+        <button class="pwa-banner-btn" onclick="triggerInstall()">安裝</button>
+        <button class="pwa-banner-close" onclick="dismissPWA()">✕</button>
+      </div>`;
+  } else if (isIOS()) {
+    // iOS Safari: show manual instructions
+    el.innerHTML = `
+      <div class="pwa-banner">
+        <div class="pwa-banner-ico">📲</div>
+        <div class="pwa-banner-txt">
+          <div class="pwa-banner-title">安裝到主畫面</div>
+          <div class="pwa-banner-sub">點底部 分享 → 「加入主畫面」</div>
+        </div>
+        <button class="pwa-banner-close" onclick="dismissPWA()">✕</button>
+      </div>`;
+  }
+}
+
+function triggerInstall() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(r => {
+    if (r.outcome === 'accepted') dismissPWA();
+    deferredPrompt = null;
+  });
+}
+
+function dismissPWA() {
+  localStorage.setItem('pwa_dismissed', '1');
+  const el = document.getElementById('pwa-banner');
+  if (el) el.innerHTML = '';
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  showPWABanner();
+});
+
+window.addEventListener('appinstalled', () => dismissPWA());
 
 // ── Init ──────────────────────────────────────────────────────
 checkReset();
@@ -511,6 +657,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
 
 renderTabs();
 render();
+showPWABanner();
 </script>
 </body>
 </html>
