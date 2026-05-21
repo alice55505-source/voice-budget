@@ -189,8 +189,8 @@ const KEY = 'vb_v2';
 function defaultData() {
   return {
     tabs: [
-      { id: 'credit', name: '信用卡', cc: true },
-      { id: 'cash',   name: '現金',   cc: false }
+      { id: 'cash',   name: '現金',   cc: false },
+      { id: 'credit', name: '信用卡', cc: true }
     ],
     records: [],
     budget: 4000,
@@ -199,7 +199,7 @@ function defaultData() {
 }
 
 let D = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || defaultData(); } catch { return defaultData(); } })();
-let activeTab = D.tabs[0]?.id || 'credit';
+let activeTab = D.tabs.find(t => t.id === 'cash')?.id || D.tabs[0]?.id;
 let tctxTab = null;
 
 const save = () => localStorage.setItem(KEY, JSON.stringify(D));
