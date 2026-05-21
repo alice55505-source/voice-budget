@@ -389,7 +389,7 @@ function render() {
 function toggleVoice() { isRec ? stopVoice() : startVoice(); }
 
 function startVoice() {
-  if (!navigator.onLine) { showToast('離線中，請手動輸入'); showForm('', 0); return; }
+  if (!navigator.onLine) { showForm('', 0); showToast('離線中：請用鍵盤麥克風輸入'); return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { showToast('此裝置不支援語音辨識，請手動輸入'); showForm('', 0); return; }
   recog = new SR();
@@ -451,7 +451,10 @@ function showForm(note, amt) {
   document.getElementById('fnote').value = note;
   document.getElementById('famt').value  = amt || '';
   f.classList.add('on');
-  setTimeout(() => document.getElementById('famt').focus(), 100);
+  setTimeout(() => {
+    const target = note ? document.getElementById('famt') : document.getElementById('fnote');
+    target.focus();
+  }, 100);
 }
 
 function cancelForm() {
