@@ -1,8 +1,10 @@
-const CACHE = 'vb-v3';
+const CACHE = 'vb-v4';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).catch(() => {})));
+  e.waitUntil(
+    caches.open(CACHE).then(c => c.addAll(ASSETS))
+  );
   self.skipWaiting();
 });
 
@@ -20,20 +22,21 @@ self.addEventListener('fetch', e => {
                  url.pathname.endsWith('.html');
 
   if (isHTML) {
-    // Network-first for HTML: always get latest, fall back to cache if offline
     e.respondWith(
-      fetch(e.request).then(res => {
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
-        return res;
-      }).catch(() => caches.match(e.request))
+      fetch(e.request)
+        .then(res => {
+          caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+          return res;
+        })
+        .catch(() =>
+          caches.match(e.request)
+            .then(r => r || caches.match('./index.html'))
+        )
     );
   } else {
-    // Cache-first for other assets
     e.respondWith(
       caches.match(e.request).then(r => r || fetch(e.request).then(res => {
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
+        caches.open(CACHE).then(c => c.put(e.request, res.clone()));
         return res;
       }))
     );
