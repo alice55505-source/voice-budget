@@ -389,6 +389,7 @@ function render() {
 function toggleVoice() { isRec ? stopVoice() : startVoice(); }
 
 function startVoice() {
+  if (!navigator.onLine) { showToast('離線中，請手動輸入'); showForm('', 0); return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { showToast('此裝置不支援語音辨識，請手動輸入'); showForm('', 0); return; }
   recog = new SR();
@@ -435,7 +436,10 @@ function startVoice() {
   recog.onerror = e => {
     isRec=false; const b=document.getElementById('vbtn');
     if(b){b.classList.remove('rec');b.textContent='🎙';}
-    if(e.error!=='no-speech') showToast('語音失敗：'+e.error);
+    const r=document.getElementById('vres'); if(r){r.textContent='';r.classList.remove('on');}
+    if (e.error==='network') { showToast('語音需要網路，請手動輸入'); showForm('', 0); }
+    else if (e.error==='not-allowed') showToast('請允許麥克風權限');
+    else if (e.error!=='no-speech') showToast('語音失敗，請手動輸入');
   };
   recog.start();
 }
