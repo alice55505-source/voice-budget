@@ -42,14 +42,14 @@
     .bfill.warn{background:var(--w)}
     .bfill.over{background:var(--d)}
     .bfoot{display:flex;justify-content:space-between;font-size:12px;color:var(--mu);margin-top:6px}
-    /* Voice section */
-    .vsec{padding:24px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:14px}
-    .vbtn{width:80px;height:80px;border-radius:50%;border:none;background:var(--p);color:#fff;font-size:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(124,58,237,.4);transition:transform .15s,box-shadow .15s;user-select:none}
+    /* Voice FAB */
+    .vfab{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:150;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+    .vbtn{width:72px;height:72px;border-radius:50%;border:none;background:var(--p);color:#fff;font-size:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(124,58,237,.45);transition:transform .15s,box-shadow .15s;user-select:none;pointer-events:auto}
     .vbtn:active{transform:scale(.93)}
     .vbtn.rec{background:var(--d);box-shadow:0 0 0 0 rgba(239,68,68,.4);animation:pulse 1.4s ease-out infinite}
     @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}70%{box-shadow:0 0 0 22px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
-    .vhint{font-size:13px;color:var(--mu);text-align:center}
-    .vresult{font-size:15px;font-weight:600;color:var(--tx);min-height:22px;text-align:center;transition:opacity .2s}
+    .vresult{font-size:14px;font-weight:600;color:#fff;background:rgba(17,24,39,.75);padding:5px 14px;border-radius:99px;pointer-events:none;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;display:none}
+    .vresult.on{display:block}
     /* Quick form */
     .qform{margin:0 16px 16px;background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);display:none}
     .qform.on{display:block}
@@ -63,7 +63,7 @@
     .btnp{background:var(--p);color:#fff}
     .btns{background:#f3f4f6;color:var(--tx)}
     /* Records */
-    .rsec{padding:4px 16px 100px}
+    .rsec{padding:4px 16px 140px}
     .dgroup{margin-bottom:14px}
     .dlabel{font-size:11px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.06em;padding:10px 2px 5px}
     .ritem{background:#fff;border-radius:11px;padding:12px 14px;margin-bottom:6px;box-shadow:0 1px 3px rgba(0,0,0,.07);display:flex;align-items:center;gap:12px;position:relative;overflow:hidden}
@@ -120,6 +120,12 @@
 
 <div id="pwa-banner"></div>
 <div id="app"></div>
+
+<!-- Voice FAB -->
+<div class="vfab">
+  <div class="vresult" id="vres"></div>
+  <button class="vbtn" id="vbtn" onclick="toggleVoice()">🎙</button>
+</div>
 
 <!-- Add Tab Modal -->
 <div class="overlay" id="addTabModal">
@@ -361,12 +367,6 @@ function render() {
   document.getElementById('app').innerHTML = `
     ${budgetCardHTML}
 
-    <div class="vsec">
-      <button class="vbtn" id="vbtn" onclick="toggleVoice()">🎙</button>
-      <div class="vhint">點麥克風語音記帳（例：午餐 120 元）</div>
-      <div class="vresult" id="vres"></div>
-    </div>
-
     <div class="qform" id="qform">
       <div class="qrow">
         <input class="qinput" id="fnote" placeholder="備註">
@@ -395,10 +395,10 @@ function startVoice() {
   recog.lang = 'zh-TW'; recog.continuous = false; recog.interimResults = true;
   const btn = document.getElementById('vbtn');
   const res = document.getElementById('vres');
-  recog.onstart = () => { isRec=true; btn.classList.add('rec'); btn.textContent='⏹'; res.textContent='聆聽中...'; };
+  recog.onstart = () => { isRec=true; btn.classList.add('rec'); btn.textContent='⏹'; res.textContent='聆聽中...'; res.classList.add('on'); };
   recog.onresult = e => {
     const t = Array.from(e.results).map(r=>r[0].transcript).join('');
-    res.textContent = t;
+    res.textContent = t; res.classList.add('on');
     if (e.results[e.results.length-1].isFinal) { const p=parseVoice(t); pendAmt=p.amount; pendNote=p.note; }
   };
   recog.onend = () => {
@@ -425,11 +425,11 @@ function startVoice() {
         showToast(`已記帳 $${pendAmt}`);
       }
       pendAmt=0; pendNote='';
-      const r=document.getElementById('vres'); if(r)r.textContent='';
+      const r=document.getElementById('vres'); if(r){r.textContent='';r.classList.remove('on');}
     } else if (pendNote) {
       showForm(pendNote, 0);
     } else {
-      const r=document.getElementById('vres'); if(r)r.textContent='';
+      const r=document.getElementById('vres'); if(r){r.textContent='';r.classList.remove('on');}
     }
   };
   recog.onerror = e => {
@@ -452,7 +452,7 @@ function showForm(note, amt) {
 
 function cancelForm() {
   const f=document.getElementById('qform'); if(f)f.classList.remove('on');
-  const r=document.getElementById('vres'); if(r)r.textContent='';
+  const r=document.getElementById('vres'); if(r){r.textContent='';r.classList.remove('on');}
   pendAmt=0; pendNote='';
 }
 
