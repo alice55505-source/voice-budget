@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#7c3aed">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="語音記帳">
+  <link rel="manifest" href="manifest.json">
+  <title>語音記帳</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    :root{
+      --p:#7c3aed;--pl:#a78bfa;--d:#ef4444;--w:#f59e0b;--s:#10b981;
+      --bg:#f3f4f6;--card:#fff;--tx:#111827;--mu:#6b7280;--bd:#e5e7eb
+    }
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);min-height:100dvh;max-width:480px;margin:0 auto}
+    /* Header */
+    .hdr{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;padding:16px 20px 14px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(124,58,237,.3)}
+    .hdr h1{font-size:20px;font-weight:700;letter-spacing:-.3px}
+    .hdr-sub{font-size:13px;opacity:.75;margin-top:2px}
+    /* Tabs */
+    .tab-bar{background:#fff;border-bottom:1px solid var(--bd);overflow-x:auto;display:flex;scrollbar-width:none;position:sticky;top:66px;z-index:90;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .tab-bar::-webkit-scrollbar{display:none}
+    .tab-item{padding:12px 18px;white-space:nowrap;cursor:pointer;font-size:14px;font-weight:500;color:var(--mu);border-bottom:2.5px solid transparent;transition:all .2s;user-select:none}
+    .tab-item.active{color:var(--p);border-bottom-color:var(--p);font-weight:600}
+    .tab-add{padding:12px 16px;cursor:pointer;color:var(--mu);font-size:22px;line-height:1;display:flex;align-items:center;flex-shrink:0}
+    /* Budget card */
+    .bcard{margin:16px 16px 0;background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    .bcard-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+    .blabel{font-size:12px;color:var(--mu);font-weight:500}
+    .bamt{font-size:28px;font-weight:800;line-height:1;margin-top:4px}
+    .bamt.ok{color:var(--tx)}
+    .bamt.warn{color:var(--w)}
+    .bamt.over{color:var(--d)}
+    .bright{text-align:right}
+    .bbudget{font-size:13px;font-weight:600;color:var(--mu)}
+    .bremain{font-size:12px;color:var(--mu);margin-top:2px}
+    .bbar{background:#f3f4f6;border-radius:99px;height:8px;overflow:hidden}
+    .bfill{height:100%;border-radius:99px;transition:width .6s ease,background .3s;background:var(--s)}
+    .bfill.warn{background:var(--w)}
+    .bfill.over{background:var(--d)}
+    .bfoot{display:flex;justify-content:space-between;font-size:12px;color:var(--mu);margin-top:6px}
+    /* Voice section */
+    .vsec{padding:24px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:14px}
+    .vbtn{width:80px;height:80px;border-radius:50%;border:none;background:var(--p);color:#fff;font-size:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(124,58,237,.4);transition:transform .15s,box-shadow .15s;user-select:none}
+    .vbtn:active{transform:scale(.93)}
+    .vbtn.rec{background:var(--d);box-shadow:0 0 0 0 rgba(239,68,68,.4);animation:pulse 1.4s ease-out infinite}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}70%{box-shadow:0 0 0 22px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
+    .vhint{font-size:13px;color:var(--mu);text-align:center}
+    .vresult{font-size:15px;font-weight:600;color:var(--tx);min-height:22px;text-align:center;transition:opacity .2s}
+    /* Quick form */
+    .qform{margin:0 16px 16px;background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);display:none}
+    .qform.on{display:block}
+    .qrow{display:flex;gap:8px;margin-bottom:10px}
+    .qinput{flex:1;padding:11px 13px;border:1.5px solid var(--bd);border-radius:9px;font-size:15px;outline:none;transition:border-color .2s;background:#fff}
+    .qinput:focus{border-color:var(--p)}
+    .qamt{width:110px;flex:none;text-align:right}
+    .qbtns{display:flex;gap:8px}
+    .btn{flex:1;padding:11px;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s}
+    .btn:active{opacity:.8}
+    .btnp{background:var(--p);color:#fff}
+    .btns{background:#f3f4f6;color:var(--tx)}
+    /* Records */
+    .rsec{padding:4px 16px 100px}
+    .dgroup{margin-bottom:14px}
+    .dlabel{font-size:11px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.06em;padding:10px 2px 5px}
+    .ritem{background:#fff;border-radius:11px;padding:12px 14px;margin-bottom:6px;box-shadow:0 1px 3px rgba(0,0,0,.07);display:flex;align-items:center;gap:12px;position:relative;overflow:hidden}
+    .rico{width:36px;height:36px;border-radius:50%;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+    .rinfo{flex:1;min-width:0}
+    .rnote{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .rtime{font-size:12px;color:var(--mu);margin-top:2px}
+    .ramt{font-size:17px;font-weight:800;color:var(--d);flex-shrink:0;margin-right:6px}
+    .rdel{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#ccc;font-size:18px;cursor:pointer;padding:6px;border-radius:6px;transition:color .2s}
+    .rdel:active{color:var(--d)}
+    .empty{text-align:center;padding:48px 20px;color:var(--mu)}
+    .eico{font-size:52px;margin-bottom:12px}
+    /* Modal */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end;justify-content:center}
+    .overlay.on{display:flex}
+    .modal{background:#fff;border-radius:22px 22px 0 0;padding:22px;width:100%;max-width:480px}
+    .mtitle{font-size:18px;font-weight:700;margin-bottom:16px}
+    .mlabel{font-size:13px;color:var(--mu);margin-bottom:6px;font-weight:500}
+    .mbtns{display:flex;gap:10px;margin-top:18px}
+    /* Toast */
+    .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(16px);background:rgba(17,24,39,.92);color:#fff;padding:10px 22px;border-radius:99px;font-size:14px;opacity:0;transition:all .3s;z-index:400;white-space:nowrap;pointer-events:none}
+    .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+    /* Tab ctx */
+    .tctx{position:fixed;background:#fff;border-radius:13px;box-shadow:0 6px 24px rgba(0,0,0,.16);padding:6px 0;z-index:300;min-width:160px;display:none}
+    .tctxi{padding:13px 18px;font-size:14px;cursor:pointer;transition:background .15s}
+    .tctxi:active{background:#f3f4f6}
+    .tctxi.del{color:var(--d)}
+    /* Budget settings btn */
+    .hdr-row{display:flex;justify-content:space-between;align-items:center}
+    .hdr-btn{background:rgba(255,255,255,.2);border:none;color:#fff;font-size:13px;padding:5px 10px;border-radius:99px;cursor:pointer}
+  </style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-row">
+    <h1>🎙 語音記帳</h1>
+    <button class="hdr-btn" onclick="showBudgetModal()">⚙ 預算</button>
+  </div>
+  <div class="hdr-sub" id="curMonth">載入中...</div>
+</div>
+
+<div class="tab-bar" id="tabBar">
+  <div class="tab-add" onclick="showAddTabModal()">＋</div>
+</div>
+
+<div id="app"></div>
+
+<!-- Add Tab Modal -->
+<div class="overlay" id="addTabModal">
+  <div class="modal">
+    <div class="mtitle">新增分頁</div>
+    <div class="mlabel">分頁名稱</div>
+    <input class="qinput" id="newTabName" placeholder="例：餐飲、交通、娛樂" maxlength="10" style="width:100%;margin-bottom:12px">
+    <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;padding:8px 0">
+      <input type="checkbox" id="newTabCC" style="width:18px;height:18px;accent-color:var(--p)">
+      <span>納入信用卡預算計算</span>
+    </label>
+    <div class="mbtns">
+      <button class="btn btns" onclick="closeAddTabModal()">取消</button>
+      <button class="btn btnp" onclick="confirmAddTab()">新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- Budget Modal -->
+<div class="overlay" id="budgetModal">
+  <div class="modal">
+    <div class="mtitle">信用卡月預算設定</div>
+    <div class="mlabel">每月預算上限（元）</div>
+    <input type="number" class="qinput" id="budgetInput" style="width:100%;margin-bottom:8px" inputmode="numeric">
+    <div style="font-size:12px;color:var(--mu)">每月 1 日自動重置，超過 80% 會提醒</div>
+    <div class="mbtns">
+      <button class="btn btns" onclick="closeBudgetModal()">取消</button>
+      <button class="btn btnp" onclick="confirmBudget()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tab Context Menu -->
+<div class="tctx" id="tctx">
+  <div class="tctxi" onclick="renameTab()">✏️ 重新命名</div>
+  <div class="tctxi" id="tctxCC" onclick="toggleTabCC()">💳 切換信用卡計算</div>
+  <div class="tctxi del" id="tctxDel" onclick="deleteTab()">🗑 刪除分頁</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Storage ──────────────────────────────────────────────────
+const KEY = 'vb_v2';
+
+function defaultData() {
+  return {
+    tabs: [
+      { id: 'credit', name: '信用卡', cc: true },
+      { id: 'cash',   name: '現金',   cc: false }
+    ],
+    records: [],
+    budget: 4000,
+    resetMonth: null
+  };
+}
+
+let D = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || defaultData(); } catch { return defaultData(); } })();
+let activeTab = D.tabs[0]?.id || 'credit';
+let tctxTab = null;
+
+const save = () => localStorage.setItem(KEY, JSON.stringify(D));
+
+// ── Budget helpers ────────────────────────────────────────────
+const curMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+
+function checkReset() {
+  const m = curMonth();
+  if (D.resetMonth !== m) { D.resetMonth = m; save(); }
+}
+
+function ccSpend() {
+  const m = curMonth();
+  const ids = D.tabs.filter(t => t.cc).map(t => t.id);
+  return D.records.filter(r => ids.includes(r.tabId) && r.date.startsWith(m)).reduce((s,r) => s+r.amount, 0);
+}
+
+// ── Voice ─────────────────────────────────────────────────────
+let recog = null, isRec = false, pendAmt = 0, pendNote = '';
+
+function parseVoice(txt) {
+  const m = txt.match(/(\d+(?:\.\d+)?)/);
+  const amount = m ? parseFloat(m[1]) : 0;
+  let note = txt.replace(/\d+(?:\.\d+)?\s*(?:元|塊|圓|块)?/g, '').trim();
+  if (!note) note = txt.trim();
+  return { amount, note: note || '記帳' };
+}
+
+// ── Records ───────────────────────────────────────────────────
+function addRec(tabId, amount, note) {
+  const now = new Date();
+  D.records.unshift({
+    id: Date.now() + Math.random().toString(36).slice(2),
+    tabId, amount, note,
+    date: now.toISOString().split('T')[0],
+    time: now.toTimeString().slice(0,5),
+    ts: now.getTime()
+  });
+  save();
+}
+
+function delRec(id) {
+  D.records = D.records.filter(r => r.id !== id);
+  save(); render();
+}
+
+// ── Render ────────────────────────────────────────────────────
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function tabIcon(name) {
+  const m = {'信用卡':'💳','現金':'💵','餐飲':'🍜','餐食':'🍜','飲食':'🍜','交通':'🚌','購物':'🛍','娛樂':'🎮','醫療':'💊','生活':'🏠','日用':'🧴','咖啡':'☕','飲料':'🧋','超市':'🛒','油費':'⛽','停車':'🅿️'};
+  for (const k in m) if (name.includes(k)) return m[k];
+  return '📝';
+}
+
+function fmtDate(s) {
+  const today = new Date().toISOString().split('T')[0];
+  const yest  = new Date(Date.now()-86400000).toISOString().split('T')[0];
+  if (s===today) return '今天';
+  if (s===yest)  return '昨天';
+  const d = new Date(s); return `${d.getMonth()+1}月${d.getDate()}日`;
+}
+
+function renderTabs() {
+  const bar = document.getElementById('tabBar');
+  const add = bar.querySelector('.tab-add');
+  bar.querySelectorAll('.tab-item').forEach(e => e.remove());
+  D.tabs.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'tab-item' + (t.id === activeTab ? ' active' : '');
+    el.textContent = t.name;
+    el.dataset.id = t.id;
+    el.onclick = () => switchTab(t.id);
+    let lp;
+    el.addEventListener('touchstart', () => { lp = setTimeout(() => openTctx(el, t.id), 550); }, {passive:true});
+    el.addEventListener('touchend',   () => clearTimeout(lp), {passive:true});
+    el.addEventListener('contextmenu', e => { e.preventDefault(); openTctx(e, t.id); });
+    bar.insertBefore(el, add);
+  });
+}
+
+function render() {
+  const tab   = D.tabs.find(t => t.id === activeTab);
+  const spend = ccSpend();
+  const budget= D.budget;
+  const pct   = Math.min(100, spend / budget * 100);
+  const rem   = budget - spend;
+  const cls   = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : 'ok';
+
+  const recs  = D.records.filter(r => r.tabId === activeTab);
+  const groups= {};
+  recs.forEach(r => { (groups[r.date] = groups[r.date] || []).push(r); });
+
+  const recsHTML = Object.keys(groups).sort((a,b)=>b.localeCompare(a)).map(date => {
+    const items = groups[date].map(r => `
+      <div class="ritem">
+        <div class="rico">${tabIcon(r.note)}</div>
+        <div class="rinfo">
+          <div class="rnote">${esc(r.note)}</div>
+          <div class="rtime">${r.time}</div>
+        </div>
+        <div class="ramt">-$${r.amount.toLocaleString()}</div>
+        <button class="rdel" onclick="delRec('${r.id}')" title="刪除">✕</button>
+      </div>`).join('');
+    return `<div class="dgroup"><div class="dlabel">${fmtDate(date)}</div>${items}</div>`;
+  }).join('');
+
+  document.getElementById('app').innerHTML = `
+    <div class="bcard">
+      <div class="bcard-row">
+        <div>
+          <div class="blabel">信用卡本月消費</div>
+          <div class="bamt ${cls}">$${spend.toLocaleString()}</div>
+        </div>
+        <div class="bright">
+          <div class="bbudget">預算 $${budget.toLocaleString()}</div>
+          <div class="bremain">${cls==='over' ? '⚠️ 已超支 $'+(spend-budget).toLocaleString() : '剩 $'+rem.toLocaleString()}</div>
+        </div>
+      </div>
+      <div class="bbar"><div class="bfill ${cls}" style="width:${pct}%"></div></div>
+      <div class="bfoot"><span>${cls==='over'?'🔴 超過預算':'已使用 '+Math.round(pct)+'%'}</span><span>${new Date().getMonth()+1}月</span></div>
+    </div>
+
+    <div class="vsec">
+      <button class="vbtn" id="vbtn" onclick="toggleVoice()">🎙</button>
+      <div class="vhint">點麥克風語音記帳（例：午餐 120 元）</div>
+      <div class="vresult" id="vres"></div>
+    </div>
+
+    <div class="qform" id="qform">
+      <div class="qrow">
+        <input class="qinput" id="fnote" placeholder="備註">
+        <input type="number" class="qinput qamt" id="famt" placeholder="金額" inputmode="decimal">
+      </div>
+      <div class="qbtns">
+        <button class="btn btns" onclick="cancelForm()">取消</button>
+        <button class="btn btnp" onclick="confirmRec()">記帳 ✓</button>
+      </div>
+    </div>
+
+    <div class="rsec">${
+      recs.length === 0
+        ? `<div class="empty"><div class="eico">📭</div><div>還沒有紀錄</div><div style="margin-top:6px;font-size:13px">按麥克風開始語音記帳</div></div>`
+        : recsHTML
+    }</div>`;
+}
+
+// ── Voice controls ────────────────────────────────────────────
+function toggleVoice() { isRec ? stopVoice() : startVoice(); }
+
+function startVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('此裝置不支援語音辨識，請手動輸入'); showForm('', 0); return; }
+  recog = new SR();
+  recog.lang = 'zh-TW'; recog.continuous = false; recog.interimResults = true;
+  const btn = document.getElementById('vbtn');
+  const res = document.getElementById('vres');
+  recog.onstart = () => { isRec=true; btn.classList.add('rec'); btn.textContent='⏹'; res.textContent='聆聽中...'; };
+  recog.onresult = e => {
+    const t = Array.from(e.results).map(r=>r[0].transcript).join('');
+    res.textContent = t;
+    if (e.results[e.results.length-1].isFinal) { const p=parseVoice(t); pendAmt=p.amount; pendNote=p.note; }
+  };
+  recog.onend = () => {
+    isRec=false; const b=document.getElementById('vbtn');
+    if(b){b.classList.remove('rec');b.textContent='🎙';}
+    if (pendAmt > 0 || pendNote) showForm(pendNote, pendAmt);
+    else { const r=document.getElementById('vres'); if(r)r.textContent=''; }
+  };
+  recog.onerror = e => {
+    isRec=false; const b=document.getElementById('vbtn');
+    if(b){b.classList.remove('rec');b.textContent='🎙';}
+    if(e.error!=='no-speech') showToast('語音失敗：'+e.error);
+  };
+  recog.start();
+}
+
+function stopVoice() { if(recog) recog.stop(); }
+
+function showForm(note, amt) {
+  const f = document.getElementById('qform'); if(!f) return;
+  document.getElementById('fnote').value = note;
+  document.getElementById('famt').value  = amt || '';
+  f.classList.add('on');
+  setTimeout(() => document.getElementById('famt').focus(), 100);
+}
+
+function cancelForm() {
+  const f=document.getElementById('qform'); if(f)f.classList.remove('on');
+  const r=document.getElementById('vres'); if(r)r.textContent='';
+  pendAmt=0; pendNote='';
+}
+
+function confirmRec() {
+  const note   = document.getElementById('fnote').value.trim() || '記帳';
+  const amount = parseFloat(document.getElementById('famt').value) || 0;
+  if (amount <= 0) { showToast('請輸入金額'); return; }
+  addRec(activeTab, amount, note);
+  cancelForm(); render();
+  const s = ccSpend(); const p = s/D.budget*100;
+  const tab = D.tabs.find(t=>t.id===activeTab);
+  if (tab?.cc) {
+    if      (p>=100) showToast(`⚠️ 超預算！本月已花 $${s.toLocaleString()}`);
+    else if (p>=80)  showToast(`提醒：已用預算 ${Math.round(p)}%，剩 $${(D.budget-s).toLocaleString()}`);
+    else             showToast(`記帳 $${amount}，本月剩 $${(D.budget-s).toLocaleString()}`);
+  } else {
+    showToast(`已記帳 $${amount}`);
+  }
+}
+
+// ── Tab management ────────────────────────────────────────────
+function switchTab(id) { activeTab=id; pendAmt=0; pendNote=''; renderTabs(); render(); }
+
+function showAddTabModal() {
+  document.getElementById('newTabName').value=''; document.getElementById('newTabCC').checked=false;
+  document.getElementById('addTabModal').classList.add('on');
+  setTimeout(() => document.getElementById('newTabName').focus(), 150);
+}
+function closeAddTabModal() { document.getElementById('addTabModal').classList.remove('on'); }
+function confirmAddTab() {
+  const name = document.getElementById('newTabName').value.trim();
+  if (!name) { showToast('請輸入分頁名稱'); return; }
+  const id = 't'+Date.now();
+  D.tabs.push({ id, name, cc: document.getElementById('newTabCC').checked });
+  save(); closeAddTabModal(); switchTab(id);
+}
+
+function openTctx(ref, tabId) {
+  tctxTab = tabId;
+  const el = document.getElementById('tctx');
+  const tab = D.tabs.find(t=>t.id===tabId);
+  const canDel = D.tabs.length>1 && tabId!=='credit' && tabId!=='cash';
+  document.getElementById('tctxDel').style.display = canDel ? '' : 'none';
+  document.getElementById('tctxCC').textContent = (tab?.cc ? '✅' : '⬜') + ' 納入信用卡預算';
+  el.style.display='block';
+  const r = (ref.getBoundingClientRect ? ref.getBoundingClientRect() : null);
+  const x = r ? Math.min(r.left, window.innerWidth-170) : 20;
+  const y = r ? Math.min(r.bottom+4, window.innerHeight-120) : 120;
+  el.style.left=x+'px'; el.style.top=y+'px';
+  setTimeout(() => document.addEventListener('click', closeTctx, {once:true}), 10);
+}
+
+function closeTctx() { document.getElementById('tctx').style.display='none'; }
+
+function renameTab() {
+  closeTctx(); const tab=D.tabs.find(t=>t.id===tctxTab); if(!tab)return;
+  const name=prompt('分頁名稱', tab.name);
+  if (name?.trim()) { tab.name=name.trim(); save(); renderTabs(); render(); }
+}
+
+function toggleTabCC() {
+  closeTctx(); const tab=D.tabs.find(t=>t.id===tctxTab); if(!tab)return;
+  tab.cc=!tab.cc; save(); render();
+  showToast(tab.cc ? `${tab.name} 已納入信用卡預算` : `${tab.name} 已移出信用卡預算`);
+}
+
+function deleteTab() {
+  closeTctx(); const tab=D.tabs.find(t=>t.id===tctxTab); if(!tab)return;
+  if (!confirm(`刪除「${tab.name}」分頁？\n（該分頁的所有記錄也會刪除）`)) return;
+  D.records = D.records.filter(r=>r.tabId!==tctxTab);
+  D.tabs    = D.tabs.filter(t=>t.id!==tctxTab);
+  save();
+  if (activeTab===tctxTab) activeTab=D.tabs[0].id;
+  renderTabs(); render();
+}
+
+// ── Budget modal ──────────────────────────────────────────────
+function showBudgetModal() {
+  document.getElementById('budgetInput').value = D.budget;
+  document.getElementById('budgetModal').classList.add('on');
+  setTimeout(() => document.getElementById('budgetInput').focus(), 150);
+}
+function closeBudgetModal() { document.getElementById('budgetModal').classList.remove('on'); }
+function confirmBudget() {
+  const v = parseFloat(document.getElementById('budgetInput').value);
+  if (v > 0) { D.budget=v; save(); closeBudgetModal(); render(); showToast(`預算已設為 $${v.toLocaleString()}`); }
+  else showToast('請輸入有效金額');
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+let toastTmr;
+function showToast(msg) {
+  const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('on');
+  clearTimeout(toastTmr); toastTmr=setTimeout(()=>el.classList.remove('on'), 3200);
+}
+
+// ── Modal backdrop ────────────────────────────────────────────
+['addTabModal','budgetModal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', function(e){ if(e.target===this) this.classList.remove('on'); });
+});
+
+// ── Init ──────────────────────────────────────────────────────
+checkReset();
+const now = new Date();
+document.getElementById('curMonth').textContent = `${now.getFullYear()}年${now.getMonth()+1}月`;
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+renderTabs();
+render();
+</script>
+</body>
+</html>
