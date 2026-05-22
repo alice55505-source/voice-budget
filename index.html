@@ -612,8 +612,6 @@ function showToast(msg) {
 let expandedMonth = null;
 
 function showHistory() {
-  const tab = D.tabs.find(t => t.id === activeTab);
-  document.getElementById('historyTitle').textContent = `${tab?.name || ''} 歷史`;
   expandedMonth = null;
   renderHistory();
   document.getElementById('historyModal').classList.add('on');
@@ -627,7 +625,7 @@ function renderHistory() {
   const m = curMonth();
   const byMonth = {};
   D.records
-    .filter(r => r.tabId === activeTab && !r.date.startsWith(m))
+    .filter(r => !r.date.startsWith(m))
     .forEach(r => {
       const ym = r.date.slice(0, 7);
       (byMonth[ym] = byMonth[ym] || []).push(r);
@@ -649,15 +647,19 @@ function renderHistory() {
     const total = recs.reduce((s, r) => s + r.amount, 0);
     const open = expandedMonth === ym;
 
-    const items = open ? recs.map(r => `
+    const items = open ? recs.map(r => {
+      const tab = D.tabs.find(t => t.id === r.tabId);
+      return `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border-radius:10px;margin-bottom:6px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
         <div style="font-size:18px;width:32px;text-align:center">${tabIcon(r.note)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.note)}</div>
-          <div style="font-size:12px;color:#9ca3af;margin-top:1px">${r.date} ${r.time}</div>
+          <div style="font-size:12px;color:#9ca3af;margin-top:1px">${r.date} ${r.time}
+            <span style="margin-left:6px;background:#ede9fe;color:#7c3aed;padding:1px 6px;border-radius:99px;font-size:11px">${esc(tab?.name||'')}</span>
+          </div>
         </div>
         <div style="font-size:15px;font-weight:700;color:#ef4444;flex-shrink:0">-$${r.amount.toLocaleString()}</div>
-      </div>`).join('') : '';
+      </div>`}).join('') : '';
 
     return `
       <div style="margin-bottom:10px">
@@ -685,7 +687,7 @@ function toggleHistoryMonth(ym) {
 function deleteHistoryMonth(ym) {
   const [, mon] = ym.split('-');
   if (!confirm(`刪除 ${parseInt(mon)}月 的所有紀錄？`)) return;
-  D.records = D.records.filter(r => !(r.tabId === activeTab && r.date.startsWith(ym)));
+  D.records = D.records.filter(r => !r.date.startsWith(ym));
   save(); render();
   expandedMonth = null;
   renderHistory();
