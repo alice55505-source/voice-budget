@@ -94,14 +94,19 @@
     /* Budget settings btn */
     .hdr-row{display:flex;justify-content:space-between;align-items:center}
     .hdr-btn{background:rgba(255,255,255,.2);border:none;color:#fff;font-size:13px;padding:5px 10px;border-radius:99px;cursor:pointer}
-    /* PWA install banner */
-    .pwa-banner{margin:12px 16px 0;background:linear-gradient(135deg,#7c3aed,#6d28d9);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(124,58,237,.3)}
-    .pwa-banner-ico{font-size:28px;flex-shrink:0}
-    .pwa-banner-txt{flex:1;color:#fff}
-    .pwa-banner-title{font-size:14px;font-weight:700}
-    .pwa-banner-sub{font-size:12px;opacity:.8;margin-top:2px}
-    .pwa-banner-btn{background:#fff;color:var(--p);border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0}
-    .pwa-banner-close{background:none;border:none;color:rgba(255,255,255,.6);font-size:18px;cursor:pointer;padding:4px;flex-shrink:0;line-height:1}
+    /* PWA install fullscreen */
+    .pwa-overlay{position:fixed;inset:0;background:linear-gradient(160deg,#7c3aed,#4c1d95);z-index:500;display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px 28px;text-align:center}
+    .pwa-overlay.on{display:flex}
+    .pwa-app-icon{width:90px;height:90px;border-radius:22px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:46px;margin-bottom:20px;box-shadow:0 4px 24px rgba(0,0,0,.2)}
+    .pwa-title{font-size:26px;font-weight:800;color:#fff;margin-bottom:8px}
+    .pwa-sub{font-size:15px;color:rgba(255,255,255,.75);margin-bottom:32px;line-height:1.5}
+    .pwa-steps{width:100%;display:flex;flex-direction:column;gap:14px;margin-bottom:32px}
+    .pwa-step{background:rgba(255,255,255,.12);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;text-align:left}
+    .pwa-step-num{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .pwa-step-txt{color:#fff;font-size:14px;line-height:1.4}
+    .pwa-step-ico{font-size:22px;flex-shrink:0}
+    .pwa-install-btn{width:100%;padding:16px;border:none;border-radius:14px;background:#fff;color:var(--p);font-size:17px;font-weight:800;cursor:pointer;margin-bottom:14px;box-shadow:0 4px 16px rgba(0,0,0,.15)}
+    .pwa-later{background:none;border:none;color:rgba(255,255,255,.55);font-size:14px;cursor:pointer;padding:8px}
   </style>
 </head>
 <body>
@@ -118,8 +123,10 @@
   <div class="tab-add" onclick="showAddTabModal()">＋</div>
 </div>
 
-<div id="pwa-banner"></div>
 <div id="app"></div>
+
+<!-- PWA Install Overlay -->
+<div class="pwa-overlay" id="pwaOverlay"></div>
 
 <!-- Voice FAB -->
 <div class="vfab">
@@ -592,43 +599,48 @@ function showToast(msg) {
 // ── PWA Install ───────────────────────────────────────────────
 let deferredPrompt = null;
 
-function isInStandaloneMode() {
-  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-}
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 
-function isIOS() {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent);
-}
-
-function showPWABanner() {
-  if (isInStandaloneMode()) return;
+function showPWAOverlay() {
+  if (isStandalone()) return;
   if (localStorage.getItem('pwa_dismissed')) return;
-  const el = document.getElementById('pwa-banner');
+  const el = document.getElementById('pwaOverlay');
   if (!el) return;
 
   if (deferredPrompt) {
-    // Android Chrome: can trigger native install
     el.innerHTML = `
-      <div class="pwa-banner">
-        <div class="pwa-banner-ico">📲</div>
-        <div class="pwa-banner-txt">
-          <div class="pwa-banner-title">安裝到主畫面</div>
-          <div class="pwa-banner-sub">像 App 一樣快速開啟，離線也能用</div>
-        </div>
-        <button class="pwa-banner-btn" onclick="triggerInstall()">安裝</button>
-        <button class="pwa-banner-close" onclick="dismissPWA()">✕</button>
-      </div>`;
+      <div class="pwa-app-icon">🎙</div>
+      <div class="pwa-title">安裝語音記帳</div>
+      <div class="pwa-sub">加到主畫面，像原生 App 一樣<br>快速開啟，離線也能記帳</div>
+      <button class="pwa-install-btn" onclick="triggerInstall()">📲 立即安裝</button>
+      <button class="pwa-later" onclick="dismissPWA()">稍後再說</button>`;
+    el.classList.add('on');
   } else if (isIOS()) {
-    // iOS Safari: show manual instructions
     el.innerHTML = `
-      <div class="pwa-banner">
-        <div class="pwa-banner-ico">📲</div>
-        <div class="pwa-banner-txt">
-          <div class="pwa-banner-title">安裝到主畫面</div>
-          <div class="pwa-banner-sub">點底部 分享 → 「加入主畫面」</div>
+      <div class="pwa-app-icon">🎙</div>
+      <div class="pwa-title">安裝語音記帳</div>
+      <div class="pwa-sub">跟著以下步驟，把 App 加到主畫面</div>
+      <div class="pwa-steps">
+        <div class="pwa-step">
+          <div class="pwa-step-num">1</div>
+          <div class="pwa-step-ico">⬆️</div>
+          <div class="pwa-step-txt">點底部工具列的<br><strong>分享按鈕</strong>（方框加箭頭）</div>
         </div>
-        <button class="pwa-banner-close" onclick="dismissPWA()">✕</button>
-      </div>`;
+        <div class="pwa-step">
+          <div class="pwa-step-num">2</div>
+          <div class="pwa-step-ico">➕</div>
+          <div class="pwa-step-txt">向下滾動，選擇<br><strong>「加入主畫面」</strong></div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">3</div>
+          <div class="pwa-step-ico">✅</div>
+          <div class="pwa-step-txt">右上角點<br><strong>「新增」</strong>完成安裝</div>
+        </div>
+      </div>
+      <button class="pwa-install-btn" onclick="dismissPWA()">我知道了</button>
+      <button class="pwa-later" onclick="dismissPWA()">稍後再說</button>`;
+    el.classList.add('on');
   }
 }
 
@@ -636,21 +648,20 @@ function triggerInstall() {
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
   deferredPrompt.userChoice.then(r => {
-    if (r.outcome === 'accepted') dismissPWA();
     deferredPrompt = null;
+    dismissPWA();
   });
 }
 
 function dismissPWA() {
   localStorage.setItem('pwa_dismissed', '1');
-  const el = document.getElementById('pwa-banner');
-  if (el) el.innerHTML = '';
+  document.getElementById('pwaOverlay').classList.remove('on');
 }
 
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredPrompt = e;
-  showPWABanner();
+  showPWAOverlay();
 });
 
 window.addEventListener('appinstalled', () => dismissPWA());
@@ -664,7 +675,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
 
 renderTabs();
 render();
-showPWABanner();
+showPWAOverlay();
 </script>
 </body>
 </html>
