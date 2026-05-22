@@ -1,9 +1,10 @@
-const CACHE = 'vb-v4';
-const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
+const CACHE = 'vb-v5';
+const PRECACHE = ['./', './index.html', './icon-192.png', './icon-512.png'];
+const NETWORK_FIRST = ['manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS))
+    caches.open(CACHE).then(c => c.addAll(PRECACHE))
   );
   self.skipWaiting();
 });
@@ -20,8 +21,9 @@ self.addEventListener('fetch', e => {
   const isHTML = e.request.destination === 'document' ||
                  url.pathname === '/' ||
                  url.pathname.endsWith('.html');
+  const isNetworkFirst = NETWORK_FIRST.some(f => url.pathname.endsWith(f));
 
-  if (isHTML) {
+  if (isHTML || isNetworkFirst) {
     e.respondWith(
       fetch(e.request)
         .then(res => {
