@@ -706,7 +706,6 @@ const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 
 function showPWAOverlay() {
   if (isStandalone()) return;
-  if (localStorage.getItem('pwa_dismissed')) return;
   const el = document.getElementById('pwaOverlay');
   if (!el) return;
 
@@ -756,7 +755,6 @@ function triggerInstall() {
 }
 
 function dismissPWA() {
-  localStorage.setItem('pwa_dismissed', '1');
   document.getElementById('pwaOverlay').classList.remove('on');
 }
 
