@@ -117,7 +117,10 @@
       <img src="icon-192.png" style="width:32px;height:32px;border-radius:8px;flex-shrink:0">
       語音記帳
     </h1>
-    <button class="hdr-btn" onclick="showContextBudgetModal()">⚙ 預算</button>
+    <div style="display:flex;gap:8px">
+      <button class="hdr-btn" onclick="showHistory()">📋 歷史</button>
+      <button class="hdr-btn" onclick="showContextBudgetModal()">⚙ 預算</button>
+    </div>
   </div>
   <div class="hdr-sub" id="curMonth">載入中...</div>
 </div>
@@ -187,6 +190,17 @@
   <div class="tctxi" onclick="renameTab()">✏️ 重新命名</div>
   <div class="tctxi" id="tctxCC" onclick="toggleTabCC()">💳 切換信用卡計算</div>
   <div class="tctxi del" id="tctxDel" onclick="deleteTab()">🗑 刪除分頁</div>
+</div>
+
+<!-- History Panel -->
+<div class="overlay" id="historyModal" style="align-items:stretch">
+  <div style="background:#f3f4f6;width:100%;max-width:480px;height:92dvh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:18px 20px 14px;display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:22px 22px 0 0;flex-shrink:0">
+      <div style="font-size:17px;font-weight:700" id="historyTitle">歷史紀錄</div>
+      <button onclick="closeHistory()" style="background:none;border:none;font-size:22px;color:#9ca3af;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div id="historyContent" style="flex:1;overflow-y:auto;padding:12px 16px 32px"></div>
+  </div>
 </div>
 
 <!-- Toast -->
@@ -594,8 +608,91 @@ function showToast(msg) {
   clearTimeout(toastTmr); toastTmr=setTimeout(()=>el.classList.remove('on'), 3200);
 }
 
+// ── History ───────────────────────────────────────────────────
+let expandedMonth = null;
+
+function showHistory() {
+  const tab = D.tabs.find(t => t.id === activeTab);
+  document.getElementById('historyTitle').textContent = `${tab?.name || ''} 歷史`;
+  expandedMonth = null;
+  renderHistory();
+  document.getElementById('historyModal').classList.add('on');
+}
+
+function closeHistory() {
+  document.getElementById('historyModal').classList.remove('on');
+}
+
+function renderHistory() {
+  const m = curMonth();
+  const byMonth = {};
+  D.records
+    .filter(r => r.tabId === activeTab && !r.date.startsWith(m))
+    .forEach(r => {
+      const ym = r.date.slice(0, 7);
+      (byMonth[ym] = byMonth[ym] || []).push(r);
+    });
+
+  const months = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
+  const el = document.getElementById('historyContent');
+
+  if (!months.length) {
+    el.innerHTML = `<div style="text-align:center;padding:52px 20px;color:#9ca3af">
+      <div style="font-size:48px;margin-bottom:12px">📂</div>
+      <div style="font-size:15px">還沒有歷史紀錄</div></div>`;
+    return;
+  }
+
+  el.innerHTML = months.map(ym => {
+    const [year, mon] = ym.split('-');
+    const recs = byMonth[ym].sort((a, b) => b.ts - a.ts);
+    const total = recs.reduce((s, r) => s + r.amount, 0);
+    const open = expandedMonth === ym;
+
+    const items = open ? recs.map(r => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border-radius:10px;margin-bottom:6px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
+        <div style="font-size:18px;width:32px;text-align:center">${tabIcon(r.note)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.note)}</div>
+          <div style="font-size:12px;color:#9ca3af;margin-top:1px">${r.date} ${r.time}</div>
+        </div>
+        <div style="font-size:15px;font-weight:700;color:#ef4444;flex-shrink:0">-$${r.amount.toLocaleString()}</div>
+      </div>`).join('') : '';
+
+    return `
+      <div style="margin-bottom:10px">
+        <div onclick="toggleHistoryMonth('${ym}')" style="background:#fff;border-radius:13px;padding:14px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+          <div style="flex:1">
+            <div style="font-size:16px;font-weight:700">${parseInt(mon)}月
+              <span style="font-size:13px;font-weight:400;color:#9ca3af">${year}</span>
+            </div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:3px">${recs.length} 筆・共 $${total.toLocaleString()}</div>
+          </div>
+          <button onclick="event.stopPropagation();deleteHistoryMonth('${ym}')"
+            style="background:none;border:none;color:#d1d5db;font-size:18px;padding:4px 8px;cursor:pointer;border-radius:8px;line-height:1">🗑</button>
+          <div style="color:#d1d5db;font-size:20px;transition:transform .2s;transform:rotate(${open?90:0}deg)">›</div>
+        </div>
+        ${open ? `<div style="padding:8px 0 2px">${items}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function toggleHistoryMonth(ym) {
+  expandedMonth = expandedMonth === ym ? null : ym;
+  renderHistory();
+}
+
+function deleteHistoryMonth(ym) {
+  const [, mon] = ym.split('-');
+  if (!confirm(`刪除 ${parseInt(mon)}月 的所有紀錄？`)) return;
+  D.records = D.records.filter(r => !(r.tabId === activeTab && r.date.startsWith(ym)));
+  save(); render();
+  expandedMonth = null;
+  renderHistory();
+}
+
 // ── Modal backdrop ────────────────────────────────────────────
-['addTabModal','budgetModal','tabBudgetModal'].forEach(id => {
+['addTabModal','budgetModal','tabBudgetModal','historyModal'].forEach(id => {
   document.getElementById(id).addEventListener('click', function(e){ if(e.target===this) this.classList.remove('on'); });
 });
 
