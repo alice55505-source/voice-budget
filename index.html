@@ -97,7 +97,7 @@
     /* PWA install fullscreen */
     .pwa-overlay{position:fixed;inset:0;background:linear-gradient(160deg,#7c3aed,#4c1d95);z-index:500;display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px 28px;text-align:center}
     .pwa-overlay.on{display:flex}
-    .pwa-app-icon{width:90px;height:90px;border-radius:22px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:46px;margin-bottom:20px;box-shadow:0 4px 24px rgba(0,0,0,.2)}
+    .pwa-app-icon{width:90px;height:90px;border-radius:22px;overflow:hidden;margin-bottom:20px;box-shadow:0 4px 24px rgba(0,0,0,.3)}
     .pwa-title{font-size:26px;font-weight:800;color:#fff;margin-bottom:8px}
     .pwa-sub{font-size:15px;color:rgba(255,255,255,.75);margin-bottom:32px;line-height:1.5}
     .pwa-steps{width:100%;display:flex;flex-direction:column;gap:14px;margin-bottom:32px}
@@ -113,7 +113,10 @@
 
 <div class="hdr">
   <div class="hdr-row">
-    <h1>🎙 語音記帳</h1>
+    <h1 style="display:flex;align-items:center;gap:10px">
+      <img src="icon-192.png" style="width:32px;height:32px;border-radius:8px;flex-shrink:0">
+      語音記帳
+    </h1>
     <button class="hdr-btn" onclick="showContextBudgetModal()">⚙ 預算</button>
   </div>
   <div class="hdr-sub" id="curMonth">載入中...</div>
@@ -610,7 +613,7 @@ function showPWAOverlay() {
 
   if (deferredPrompt) {
     el.innerHTML = `
-      <div class="pwa-app-icon">🎙</div>
+      <div class="pwa-app-icon"><img src="icon-192.png" style="width:100%;height:100%"></div>
       <div class="pwa-title">安裝語音記帳</div>
       <div class="pwa-sub">加到主畫面，像原生 App 一樣<br>快速開啟，離線也能記帳</div>
       <button class="pwa-install-btn" onclick="triggerInstall()">📲 立即安裝</button>
@@ -618,7 +621,7 @@ function showPWAOverlay() {
     el.classList.add('on');
   } else if (isIOS()) {
     el.innerHTML = `
-      <div class="pwa-app-icon">🎙</div>
+      <div class="pwa-app-icon"><img src="icon-192.png" style="width:100%;height:100%"></div>
       <div class="pwa-title">安裝語音記帳</div>
       <div class="pwa-sub">跟著以下步驟，把 App 加到主畫面</div>
       <div class="pwa-steps">
